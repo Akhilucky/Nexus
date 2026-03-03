@@ -1,0 +1,32 @@
+[
+  {
+    "name": "warehouse_api",
+    "description": "Query the company data warehouse for accurate historical business data including sales, revenue, and transactions",
+    "input_schema": {"query": "string", "date_range": "string"},
+    "latency_ms": 800,
+    "cost": 0.05,
+    "reliability": 0.98,
+    "security_level": "internal",
+    "tags": ["data", "analytics", "warehouse", "sql"]
+  },
+  {
+    "name": "cache_layer",
+    "description": "Fast cache lookup for recently accessed data and pre-computed aggregations",
+    "input_schema": {"key": "string"},
+    "latency_ms": 40,
+    "cost": 0.001,
+    "reliability": 0.85,
+    "security_level": "internal",
+    "tags": ["data", "cache", "fast"]
+  },
+  {
+    "name": "analytics_script",
+    "description": "Run compute-heavy analytics scripts for anomaly detection, forecasting, and statistical analysis on business data",
+    "input_schema": {"script_name": "string", "params": "object"},
+    "latency_ms": 450,
+    "cost": 0.02,
+    "reliability": 0.92,
+    "security_level": "internal",
+    "tags": ["analytics", "compute", "ml", "anomaly"]
+  }
+]

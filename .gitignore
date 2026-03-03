@@ -1,0 +1,33 @@
+# Project secrets
+claude.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data artifacts (keep tools.json, ignore runtime data)
+nexus/data/telemetry.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# pytest
+.pytest_cache/
