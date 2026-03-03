@@ -42,7 +42,7 @@ class ToolRegistration(BaseModel):
     input_schema: dict[str, Any] = Field(default_factory=dict, description="Expected input schema")
     latency_ms: float = Field(default=100.0, ge=0, description="Typical latency (ms)")
     cost: float = Field(default=0.0, ge=0, description="Cost per invocation (USD)")
-    reliability: float = Field(default=0.95, ge=0. , le=1.0, description="Historical reliability 0–1")
+    reliability: float = Field(default=0.95, ge=0.0, le=1.0, description="Historical reliability 0–1")
     security_level: SecurityLevel = Field(default=SecurityLevel.internal)
     tags: list[str] = Field(default_factory=list, description="Categorical tags")
 
@@ -69,6 +69,24 @@ class RouteRequest(BaseModel):
     query: str = Field(..., min_length=1, description="User query / task description")
     tags_hint: list[str] | None = Field(default=None, description="Optional tag hints to narrow search")
     max_results: int = Field(default=3, ge=1, le=10, description="Number of candidate tools to return")
+    security_clearance: SecurityLevel = Field(
+        default=SecurityLevel.internal,
+        description="Maximum security level allowed for selected tools",
+    )
+    blocked_tags: list[str] | None = Field(
+        default=None,
+        description="Optional deny-list of tags that tools must not include",
+    )
+    allowed_tools: list[str] | None = Field(
+        default=None,
+        description="Optional allow-list restricting routing to specific tool names",
+    )
+    min_reliability: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Minimum reliability required for candidate tools",
+    )
 
 
 class ScoredTool(BaseModel):
@@ -86,6 +104,9 @@ class RouteResponse(BaseModel):
     selected_tool: str
     confidence: float
     reasoning_trace: list[ScoredTool] = Field(default_factory=list)
+    intent: IntentCategory = Field(default=IntentCategory.unknown)
+    intent_scores: dict[str, float] = Field(default_factory=dict)
+    policy_trace: dict[str, Any] = Field(default_factory=dict)
     request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 

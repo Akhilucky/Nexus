@@ -33,13 +33,13 @@ class TelemetryStore:
         if not self._log_path.exists():
             return
         with open(self._log_path, "r") as f:
-            for lineno, line in enumerate(f):
+            for line in f:
                 line = line.strip()
                 if not line:
                     continue
                 rec = ExecutionRecord(**json.loads(line))
                 self._records.append(rec)
-                self._index[rec.request_id] = lineno
+                self._index[rec.request_id] = len(self._records) - 1
 
     def _append_to_file(self, record: ExecutionRecord) -> None:
         self._log_path.parent.mkdir(parents=True, exist_ok=True)

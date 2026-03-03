@@ -94,10 +94,23 @@ class NexusClient:
         *,
         tags_hint: list[str] | None = None,
         max_results: int = 3,
+        security_clearance: str = "internal",
+        blocked_tags: list[str] | None = None,
+        allowed_tools: list[str] | None = None,
+        min_reliability: float = 0.0,
     ) -> dict:
-        payload: dict[str, Any] = {"query": query, "max_results": max_results}
+        payload: dict[str, Any] = {
+            "query": query,
+            "max_results": max_results,
+            "security_clearance": security_clearance,
+            "min_reliability": min_reliability,
+        }
         if tags_hint:
             payload["tags_hint"] = tags_hint
+        if blocked_tags:
+            payload["blocked_tags"] = blocked_tags
+        if allowed_tools:
+            payload["allowed_tools"] = allowed_tools
         r = self._client.post("/route", json=payload)
         r.raise_for_status()
         return r.json()

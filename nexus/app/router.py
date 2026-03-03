@@ -13,10 +13,10 @@ import logging
 import time
 
 from nexus.app.decision_engine import DecisionEngine
+from nexus.app.policy import PolicyGuardrails
 from nexus.app.telemetry import TelemetryStore
 from nexus.models.schemas import (
     ExecutionRecord,
-    IntentCategory,
     RouteRequest,
     RouteResponse,
     ScoredTool,
@@ -32,9 +32,11 @@ class Router:
         self,
         decision_engine: DecisionEngine,
         telemetry: TelemetryStore,
+        policy: PolicyGuardrails | None = None,
     ) -> None:
         self.engine = decision_engine
         self.telemetry = telemetry
+        self.policy = policy or PolicyGuardrails()
 
     def route(self, request: RouteRequest) -> RouteResponse:
         """Score tools and return the best match for the incoming query."""
@@ -44,11 +46,23 @@ class Router:
         intent, intent_scores = self.engine.intent.classify(request.query)
         logger.info("Intent: %s  scores=%s", intent.value, intent_scores)
 
-        # 2. Score candidate tools
+        # 2. Apply policy guardrails before scoring
+        policy_result = self.policy.filter_tools(self.engine.registry.list_all(), request)
+
+        # 3. Score candidate tools
+        candidate_tools = policy_result.allowed_tools
+        if request.tags_hint:
+            tag_set = {t.lower() for t in request.tags_hint}
+            candidate_tools = [
+                tool
+                for tool in candidate_tools
+                if tag_set & {tag.lower() for tag in tool.tags}
+            ]
+
         scored: list[ScoredTool] = self.engine.score_tools(
             query=request.query,
-            tags_hint=request.tags_hint,
             max_results=request.max_results,
+            candidate_tools=candidate_tools,
         )
 
         elapsed_ms = (time.perf_counter() - start) * 1000
@@ -58,6 +72,9 @@ class Router:
                 selected_tool="none",
                 confidence=0.0,
                 reasoning_trace=[],
+                intent=intent,
+                intent_scores=intent_scores,
+                policy_trace=policy_result.trace,
             )
             self._record(resp, request.query, success=True, latency_ms=elapsed_ms)
             return resp
@@ -67,6 +84,9 @@ class Router:
             selected_tool=best.tool_name,
             confidence=best.score,
             reasoning_trace=scored,
+            intent=intent,
+            intent_scores=intent_scores,
+            policy_trace=policy_result.trace,
         )
 
         self._record(resp, request.query, success=True, latency_ms=elapsed_ms)

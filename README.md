@@ -6,11 +6,13 @@ A control plane for tool-using AI systems. NEXUS registers tools with real-world
 - Tool Registry with JSON persistence
 - Embedding-based Intent Classifier (sentence-transformers) with keyword fallback
 - Weighted Decision Engine (semantic match, reliability, latency, cost, reputation)
+- Policy Guardrails (security clearance, blocked tags, allow-list, min reliability)
 - Router with telemetry logging and feedback ingestion
 - Memory/Reputation loop with reinforcement and recency weighting
+- Admin Self-Check endpoint for logical health diagnostics
 - FastAPI REST API + Python SDK client
 - 3 demo tools preloaded
-- 50 tests covering components and end-to-end flows
+- 55 tests covering components and end-to-end flows
 
 ## Quick Start
 ```bash
@@ -33,6 +35,7 @@ python3 -m pytest nexus/tests -v
 - POST /feedback — submit execution result (updates telemetry + reputation)
 - GET /metrics — system metrics
 - POST /admin/recalculate — recompute reputations from history
+- GET /admin/self-check — detect logical/operational issues early
 
 ## Repository Layout
 - nexus/app — core services (registry, intent, decision, router, telemetry, memory, FastAPI app)

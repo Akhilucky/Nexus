@@ -14,7 +14,7 @@ All sub-scores are normalised to [0, 1] before weighting.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -65,9 +65,10 @@ class DecisionEngine:
         query: str,
         tags_hint: list[str] | None = None,
         max_results: int = 3,
+        candidate_tools: list[Tool] | None = None,
     ) -> list[ScoredTool]:
         """Return a ranked list of ScoredTool objects for *query*."""
-        tools = self._candidate_tools(tags_hint)
+        tools = candidate_tools if candidate_tools is not None else self._candidate_tools(tags_hint)
         if not tools:
             return []
 
@@ -88,7 +89,14 @@ class DecisionEngine:
                 )
             )
 
-        scored.sort(key=lambda s: s.score, reverse=True)
+        scored.sort(
+            key=lambda s: (
+                -s.score,
+                self.registry.get(s.tool_name).latency_ms if self.registry.get(s.tool_name) else float("inf"),
+                self.registry.get(s.tool_name).cost if self.registry.get(s.tool_name) else float("inf"),
+                s.tool_name,
+            )
+        )
         return scored[:max_results]
 
     # ------------------------------------------------------------------
@@ -153,16 +161,24 @@ class DecisionEngine:
     @staticmethod
     def _latency_score(tool: Tool, all_tools: list[Tool]) -> float:
         """Lower latency → higher score (inverted normalisation)."""
-        max_lat = max(t.latency_ms for t in all_tools) or 1
-        return 1.0 - (tool.latency_ms / max_lat)
+        latencies = [t.latency_ms for t in all_tools]
+        min_lat = min(latencies)
+        max_lat = max(latencies)
+        if max_lat == min_lat:
+            return 1.0
+        score = 1.0 - ((tool.latency_ms - min_lat) / (max_lat - min_lat))
+        return max(0.0, min(1.0, score))
 
     @staticmethod
     def _cost_score(tool: Tool, all_tools: list[Tool]) -> float:
         """Lower cost → higher score."""
-        max_cost = max(t.cost for t in all_tools) or 1
-        if max_cost == 0:
+        costs = [t.cost for t in all_tools]
+        min_cost = min(costs)
+        max_cost = max(costs)
+        if max_cost == min_cost:
             return 1.0
-        return 1.0 - (tool.cost / max_cost)
+        score = 1.0 - ((tool.cost - min_cost) / (max_cost - min_cost))
+        return max(0.0, min(1.0, score))
 
     @staticmethod
     def _past_success_score(tool: Tool) -> float:

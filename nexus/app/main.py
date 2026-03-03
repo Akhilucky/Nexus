@@ -190,3 +190,35 @@ async def recalculate_reputations():
     assert _memory is not None
     results = _memory.recalculate_all()
     return {"reputations": results}
+
+
+@app.get("/admin/self-check")
+async def self_check():
+    """Quick logical health checks over registry + telemetry state."""
+    assert _registry is not None and _telemetry is not None
+
+    issues: list[str] = []
+    tools = _registry.list_all()
+    records = _telemetry.list_all()
+
+    if not tools:
+        issues.append("No tools registered; routing will always return 'none'.")
+
+    if tools and not records:
+        issues.append("No telemetry records yet; reputation scores are still cold-start defaults.")
+
+    for tool in tools:
+        if tool.reliability < 0.5:
+            issues.append(f"Tool '{tool.name}' has low declared reliability ({tool.reliability:.2f}).")
+        if tool.total_calls >= 10 and tool.total_successes / max(tool.total_calls, 1) < 0.6:
+            issues.append(
+                f"Tool '{tool.name}' has low observed success rate "
+                f"({tool.total_successes}/{tool.total_calls})."
+            )
+
+    return {
+        "status": "ok" if not issues else "attention",
+        "tool_count": len(tools),
+        "telemetry_records": len(records),
+        "issues": issues,
+    }

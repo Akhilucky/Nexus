@@ -118,3 +118,30 @@ class TestAPI:
         r = client.post("/admin/recalculate")
         assert r.status_code == 200
         assert "reputations" in r.json()
+
+    def test_self_check_endpoint(self, client: TestClient):
+        r = client.get("/admin/self-check")
+        assert r.status_code == 200
+        data = r.json()
+        assert "status" in data
+        assert "issues" in data
+
+    def test_route_respects_security_clearance(self, client: TestClient):
+        client.post("/tools/register", json={
+            "name": "restricted_ops_tool",
+            "description": "Runs restricted operations",
+            "security_level": "restricted",
+            "latency_ms": 10,
+            "cost": 0.001,
+            "reliability": 0.99,
+            "tags": ["ops"],
+        })
+        r = client.post("/route", json={
+            "query": "run operations",
+            "security_clearance": "internal",
+            "allowed_tools": ["restricted_ops_tool"],
+        })
+        assert r.status_code == 200
+        data = r.json()
+        assert data["selected_tool"] == "none"
+        assert data["policy_trace"]["filtered_by_clearance"] >= 1

@@ -28,6 +28,7 @@ pytest
 | POST | `/feedback` | Report execution outcome |
 | GET | `/metrics` | System-wide telemetry metrics |
 | POST | `/admin/recalculate` | Recompute all reputations |
+| GET | `/admin/self-check` | Run logical/operational diagnostics |
 
 ## Architecture
 
@@ -74,5 +75,5 @@ curl -X POST http://localhost:8000/tools/register \
 # Route a query
 curl -X POST http://localhost:8000/route \
   -H "Content-Type: application/json" \
-  -d '{"query": "Find anomalies in Q4 revenue"}'
+  -d '{"query": "Find anomalies in Q4 revenue", "security_clearance": "internal", "min_reliability": 0.7}'
 ```
