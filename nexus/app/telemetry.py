@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-from nexus.models.schemas import ExecutionRecord, SystemMetrics, ToolMetrics
+from nexus.models.schemas import ExecutionRecord, SystemMetrics, ToolMetrics, ToolRisk
 
 _DEFAULT_LOG = Path(__file__).resolve().parent.parent / "data" / "telemetry.jsonl"
 
@@ -113,3 +113,69 @@ class TelemetryStore:
             tool_count=len(tool_names),
             tools=tools,
         )
+
+    def tool_risk(self, tool_name: str, window: int = 20) -> ToolRisk:
+        records = self.list_for_tool(tool_name)
+        total = len(records)
+        if total == 0:
+            return ToolRisk(
+                tool_name=tool_name,
+                risk_score=0.0,
+                current_success_rate=1.0,
+                success_rate_drop=0.0,
+                recent_failure_rate=0.0,
+                latency_drift=0.0,
+                recent_avg_latency_ms=0.0,
+                baseline_avg_latency_ms=0.0,
+                sample_size=0,
+            )
+
+        successes = sum(1 for r in records if r.success)
+        current_success_rate = successes / total
+
+        slice_window = max(1, window)
+        recent = records[-slice_window:]
+        previous = records[-(slice_window * 2):-slice_window]
+
+        recent_success = sum(1 for r in recent if r.success) / len(recent)
+        previous_success = (
+            sum(1 for r in previous if r.success) / len(previous)
+            if previous
+            else current_success_rate
+        )
+        success_rate_drop = max(previous_success - recent_success, 0.0)
+
+        recent_failure_rate = 1.0 - recent_success
+
+        recent_avg_latency = sum(r.latency_ms for r in recent) / len(recent)
+        baseline_avg_latency = sum(r.latency_ms for r in records) / len(records)
+        latency_drift = (
+            max((recent_avg_latency - baseline_avg_latency) / baseline_avg_latency, 0.0)
+            if baseline_avg_latency > 0
+            else 0.0
+        )
+
+        risk_score = (
+            0.40 * (1.0 - current_success_rate)
+            + 0.25 * success_rate_drop
+            + 0.20 * min(latency_drift, 1.0)
+            + 0.15 * recent_failure_rate
+        )
+        risk_score = max(0.0, min(1.0, risk_score))
+
+        return ToolRisk(
+            tool_name=tool_name,
+            risk_score=round(risk_score, 4),
+            current_success_rate=round(current_success_rate, 4),
+            success_rate_drop=round(success_rate_drop, 4),
+            recent_failure_rate=round(recent_failure_rate, 4),
+            latency_drift=round(latency_drift, 4),
+            recent_avg_latency_ms=round(recent_avg_latency, 2),
+            baseline_avg_latency_ms=round(baseline_avg_latency, 2),
+            sample_size=total,
+        )
+
+    def top_risks(self, tool_names: list[str], window: int = 20, limit: int = 5) -> list[ToolRisk]:
+        risks = [self.tool_risk(tool_name=name, window=window) for name in tool_names]
+        risks.sort(key=lambda item: (-item.risk_score, -item.sample_size, item.tool_name))
+        return risks[: max(1, limit)]

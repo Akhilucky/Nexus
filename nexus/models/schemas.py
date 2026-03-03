@@ -149,3 +149,25 @@ class SystemMetrics(BaseModel):
     total_routes: int
     tool_count: int
     tools: list[ToolMetrics]
+
+
+class ToolRisk(BaseModel):
+    """Risk profile for a tool based on reliability trends and latency drift."""
+
+    tool_name: str
+    risk_score: float = Field(..., ge=0.0, le=1.0)
+    current_success_rate: float = Field(..., ge=0.0, le=1.0)
+    success_rate_drop: float = Field(..., ge=0.0, le=1.0)
+    recent_failure_rate: float = Field(..., ge=0.0, le=1.0)
+    latency_drift: float = Field(..., ge=0.0)
+    recent_avg_latency_ms: float = Field(..., ge=0.0)
+    baseline_avg_latency_ms: float = Field(..., ge=0.0)
+    sample_size: int = Field(..., ge=0)
+
+
+class TopRiskResponse(BaseModel):
+    """Top-risk tools sorted by descending risk score."""
+
+    window: int = Field(..., ge=1)
+    limit: int = Field(..., ge=1)
+    risks: list[ToolRisk] = Field(default_factory=list)

@@ -27,6 +27,7 @@ pytest
 | POST | `/route` | Route a user query to the best tool |
 | POST | `/feedback` | Report execution outcome |
 | GET | `/metrics` | System-wide telemetry metrics |
+| GET | `/metrics/top-risks` | Rank tools by operational risk |
 | POST | `/admin/recalculate` | Recompute all reputations |
 | GET | `/admin/self-check` | Run logical/operational diagnostics |
 

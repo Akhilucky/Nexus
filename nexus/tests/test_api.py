@@ -105,6 +105,25 @@ class TestAPI:
         assert "total_routes" in data
         assert "tools" in data
 
+    def test_top_risks_endpoint(self, client: TestClient):
+        # Create telemetry for at least one tool
+        route = client.post("/route", json={"query": "fetch revenue data"})
+        assert route.status_code == 200
+        req_id = route.json()["request_id"]
+        client.post("/feedback", json={
+            "request_id": req_id,
+            "success": False,
+            "latency_ms": 280.0,
+        })
+
+        r = client.get("/metrics/top-risks?limit=3&window=5")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["limit"] == 3
+        assert data["window"] == 5
+        assert "risks" in data
+        assert isinstance(data["risks"], list)
+
     def test_delete_tool(self, client: TestClient):
         client.post("/tools/register", json={
             "name": "to_delete",

@@ -10,6 +10,7 @@ A control plane for tool-using AI systems. NEXUS registers tools with real-world
 - Router with telemetry logging and feedback ingestion
 - Memory/Reputation loop with reinforcement and recency weighting
 - Admin Self-Check endpoint for logical health diagnostics
+- Risk Intelligence endpoint ranking tools by failure trend + latency drift
 - FastAPI REST API + Python SDK client
 - 3 demo tools preloaded
 - 55 tests covering components and end-to-end flows
@@ -34,6 +35,7 @@ python3 -m pytest nexus/tests -v
 - POST /route — route a query to the best tool
 - POST /feedback — submit execution result (updates telemetry + reputation)
 - GET /metrics — system metrics
+- GET /metrics/top-risks — ranked operational risk view for proactive mitigation
 - POST /admin/recalculate — recompute reputations from history
 - GET /admin/self-check — detect logical/operational issues early
 

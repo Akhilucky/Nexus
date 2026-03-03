@@ -29,6 +29,7 @@ from nexus.models.schemas import (
     RouteRequest,
     RouteResponse,
     SystemMetrics,
+    TopRiskResponse,
     Tool,
     ToolRegistration,
 )
@@ -179,6 +180,18 @@ async def get_metrics():
         if t:
             tm.reputation = t.reputation
     return metrics
+
+
+@app.get("/metrics/top-risks", response_model=TopRiskResponse)
+async def get_top_risks(limit: int = 5, window: int = 20):
+    assert _registry is not None and _telemetry is not None
+    tools = _registry.list_all()
+    risks = _telemetry.top_risks(
+        tool_names=[t.name for t in tools],
+        window=max(1, window),
+        limit=max(1, limit),
+    )
+    return TopRiskResponse(window=max(1, window), limit=max(1, limit), risks=risks)
 
 
 # ---------------------------------------------------------------------------

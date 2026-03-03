@@ -81,3 +81,54 @@ class TestTelemetryStore:
         store.add(_make_record("c1"))
         store.clear()
         assert len(store.list_all()) == 0
+
+    def test_tool_risk_detects_failure_and_latency_drift(self, store: TelemetryStore):
+        # Baseline healthy records
+        for i in range(10):
+            store.add(ExecutionRecord(
+                request_id=f"b{i}",
+                tool_name="risky",
+                tool_id="id-r",
+                query="q",
+                success=True,
+                latency_ms=100.0,
+            ))
+        # Recent degradation
+        for i in range(10):
+            store.add(ExecutionRecord(
+                request_id=f"d{i}",
+                tool_name="risky",
+                tool_id="id-r",
+                query="q",
+                success=False,
+                latency_ms=260.0,
+            ))
+
+        risk = store.tool_risk("risky", window=10)
+        assert risk.risk_score > 0.5
+        assert risk.success_rate_drop > 0.0
+        assert risk.latency_drift > 0.0
+
+    def test_top_risks_orders_descending(self, store: TelemetryStore):
+        for i in range(8):
+            store.add(ExecutionRecord(
+                request_id=f"s{i}",
+                tool_name="stable",
+                tool_id="id-s",
+                query="q",
+                success=True,
+                latency_ms=90.0,
+            ))
+        for i in range(8):
+            store.add(ExecutionRecord(
+                request_id=f"u{i}",
+                tool_name="unstable",
+                tool_id="id-u",
+                query="q",
+                success=(i < 2),
+                latency_ms=200.0 + i * 10,
+            ))
+
+        ranked = store.top_risks(["stable", "unstable"], window=5, limit=2)
+        assert len(ranked) == 2
+        assert ranked[0].tool_name == "unstable"
